@@ -119,9 +119,9 @@
                 <input id="in-author" type="text" placeholder="Autor" class="bg-surface border-white/10 rounded-lg p-3 text-white outline-none focus:border-primary">
             </div>
             <div class="flex gap-2 mb-4 flex-wrap">
-                <button onclick="document.getElementById('file-input').click()" class="px-4 py-2 border border-white/10 rounded-full flex items-center gap-2"><span class="material-symbols-outlined text-sm">upload_file</span> Importar Docx</button>
-                <button onclick="applyMagicIA()" class="px-4 py-2 bg-secondary-container text-black font-bold rounded-full flex items-center gap-2 ai-pulse border border-secondary-container"><span class="material-symbols-outlined text-sm">auto_fix</span> Magic IA</button>
-                <button onclick="clearEditor()" class="px-4 py-2 border border-white/10 rounded-full text-red-400">Limpar</button>
+                <button onclick="document.getElementById('file-input').click()" class="px-4 py-2 bg-primary/20 text-primary font-bold rounded-full flex items-center gap-2 border border-primary/40 hover:bg-primary/30 shadow-lg transition-all"><span class="material-symbols-outlined text-sm">upload_file</span> Importar Docx</button>
+                <button onclick="applyMagicIA()" class="px-4 py-2 bg-secondary-container text-black font-bold rounded-full flex items-center gap-2 ai-pulse border border-secondary-container shadow-lg hover:brightness-110 transition-all"><span class="material-symbols-outlined text-sm">auto_fix</span> Magic IA</button>
+                <button onclick="clearEditor()" class="px-4 py-2 bg-red-500/20 text-red-400 font-bold rounded-full flex items-center gap-2 border border-red-500/40 hover:bg-red-500/30 shadow-lg transition-all"><span class="material-symbols-outlined text-sm">delete</span> Limpar</button>
             </div>
             <input type="file" id="file-input" hidden onchange="handleImport(event)">
             
