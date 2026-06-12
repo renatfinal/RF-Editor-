@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>RF Editor - Versão Final Profissional</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Hanken+Grotesk:wght@400;600&family=Literata:wght@400;500;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#b8c3ff",
+                        "secondary-container": "#01f5a0",
+                        "background": "#0b1326",
+                        "surface": "#171f33",
+                        "on-surface-variant": "#c4c5d9",
+                        "page-cream": "#fffcf5"
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .glass-card { background: rgba(23, 31, 51, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65, 85, 0.5); }
+        
+        /* Ajuste para não cobrir inputs no mobile */
+        input, textarea, [contenteditable] {
+            scroll-margin-top: 100px;
+            scroll-margin-bottom: 100px;
+        }
+
+        /* Estilo da Página de Livro Físico */
+        .book-page-pro {
+            width: 100%;
+            max-width: 450px;
+            background: #fffcf5;
+            color: #1a1a1a;
+            aspect-ratio: 1 / 1.41; /* Proporção A5 */
+            padding: 11cqw 10cqw;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            font-family: 'Literata', serif;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            container-type: inline-size;
+        }
+
+        .text-content {
+            font-size: 3.55cqw;
+            line-height: 1.8;
+            text-align: justify;
+            hyphens: auto; /* Evita quebras feias */
+            word-break: break-word;
+        }
+
+        /* Recuo de parágrafo clássico de livro */
+        .text-content p {
+            text-indent: 1.5em;
+            margin-bottom: 0;
+        }
+
+        .text-content p:first-of-type {
+            text-indent: 0; /* Primeiro parágrafo do capítulo sem recuo */
+        }
+
+        .hidden-screen { display: none; }
+        .nav-active { color: #01f5a0 !important; border-top: 2px solid #01f5a0; padding-top: 4px; }
+        
+        .ai-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(1, 245, 160, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(1, 245, 160, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(1, 245, 160, 0); }
+        }
+    </style>
+</head>
+<body class="bg-background text-white font-['Hanken_Grotesk'] min-h-screen">
+
+    <header class="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-white/10 h-16 flex items-center">
+        <div class="flex items-center justify-between px-6 w-full max-w-4xl mx-auto">
+            <div class="flex items-center gap-2">
+                <span class="font-['Literata'] text-2xl font-bold tracking-tighter text-primary/80" style="letter-spacing: -2px;">RF</span>
+                <h1 class="text-xl font-bold text-white">Editor</h1>
+            </div>
+            <span class="material-symbols-outlined text-primary">account_circle</span>
+        </div>
+    </header>
+
+    <main class="pt-24 pb-32 px-6 max-w-4xl mx-auto">
+        
+        <!-- TELA CREATE -->
+        <section id="screen-create" class="screen">
+            <div class="text-center mb-10">
+                <div class="w-16 h-16 mx-auto mb-6 bg-secondary-container rounded-xl flex items-center justify-center text-black shadow-lg">
+                    <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">auto_stories</span>
+                </div>
+                <h2 class="text-2xl font-bold mb-2">Inicie sua obra</h2>
+                <p class="text-on-surface-variant">Descreva sua ideia para começar.</p>
+            </div>
+            <div class="glass-card rounded-2xl p-6">
+                <textarea id="book-idea" class="w-full h-40 bg-black/20 border border-white/10 rounded-xl p-4 text-white resize-none" placeholder="Qual a ideia central do livro?"></textarea>
+                <button onclick="createPlan()" class="w-full mt-6 h-14 bg-secondary-container text-black font-bold rounded-xl ai-pulse">Gerar Planejamento</button>
+            </div>
+        </section>
+
+        <!-- TELA EDITOR (MAGIC IA) -->
+        <section id="screen-editor" class="screen hidden-screen">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <input id="in-title" type="text" placeholder="Título" class="bg-surface border-white/10 rounded-lg p-3 text-white outline-none focus:border-primary">
+                <input id="in-author" type="text" placeholder="Autor" class="bg-surface border-white/10 rounded-lg p-3 text-white outline-none focus:border-primary">
+            </div>
+            <div class="flex gap-2 mb-4 flex-wrap">
+                <button onclick="document.getElementById('file-input').click()" class="px-4 py-2 border border-white/10 rounded-full flex items-center gap-2"><span class="material-symbols-outlined text-sm">upload_file</span> Importar Docx</button>
+                <button onclick="applyMagicIA()" class="px-4 py-2 bg-secondary-container text-black font-bold rounded-full flex items-center gap-2 ai-pulse border border-secondary-container"><span class="material-symbols-outlined text-sm">auto_fix</span> Magic IA</button>
+                <button onclick="clearEditor()" class="px-4 py-2 border border-white/10 rounded-full text-red-400">Limpar</button>
+            </div>
+            <input type="file" id="file-input" hidden onchange="handleImport(event)">
+            
+            <div class="bg-white rounded-2xl p-8 md:p-12 shadow-2xl min-h-[600px] mb-20 text-slate-900 overflow-y-auto">
+                <div id="main-textarea" contenteditable="true" class="w-full min-h-[500px] outline-none leading-relaxed" placeholder="Escreva aqui..."></div>
+            </div>
+        </section>
+
+        <!-- TELA CAPA -->
+        <section id="screen-cover" class="screen hidden-screen">
+            <h2 class="text-2xl font-bold mb-6 text-primary">Identidade Visual</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="group mx-auto max-w-[300px] md:max-w-none md:mx-0">
+                    <span class="text-xs font-bold text-on-surface-variant block mb-3 uppercase text-center md:text-left">Capa Principal</span>
+                    <label id="cover-preview-box" class="aspect-[2/3] bg-surface rounded-xl border-2 border-dashed border-white/20 flex items-center justify-center relative overflow-hidden bg-cover bg-center block w-full cursor-pointer hover:border-primary transition-colors">
+                        <div class="text-center p-6 bg-black/50 backdrop-blur-md rounded-lg pointer-events-none">
+                            <span class="material-symbols-outlined text-primary text-4xl mb-2">add_photo_alternate</span>
+                            <p class="text-sm text-white">Subir Foto da Capa</p>
+                        </div>
+                        <input type="file" id="cover-file" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" accept="image/*" onchange="uploadCapa(event)">
+                    </label>
+                </div>
+                <div class="glass-card rounded-2xl p-6 h-fit">
+                    <h3 class="font-bold flex items-center gap-2 mb-4 text-secondary-container">
+                        <span class="material-symbols-outlined">brush</span> Personalizar
+                    </h3>
+                    <p class="text-sm text-on-surface-variant mb-6">A imagem que você subir aqui será a primeira página do seu livro na visualização Pro.</p>
+                    <button class="w-full py-4 bg-white/5 border border-white/10 rounded-xl font-bold hover:bg-white/10 transition">Ver Modelos de IA</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TELA DESIGN PRO (PRÉVIA FINAL) -->
+        <section id="screen-design" class="screen hidden-screen">
+            <div class="text-center mb-12">
+                <h2 id="prev-title" class="text-3xl font-bold mb-2">Título</h2>
+                <div class="flex justify-center gap-2">
+                    <span class="bg-secondary-container/20 text-secondary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Edição Finalizada</span>
+                </div>
+            </div>
+
+            <div id="pages-container" class="flex flex-col items-center gap-12">
+                <!-- Capa e Páginas geradas via JS -->
+            </div>
+
+            <div class="mt-20 p-8 glass-card rounded-3xl text-center border-primary/20">
+                <h3 class="text-xl font-bold mb-6">Sua obra está pronta para o mundo</h3>
+                <button onclick="downloadPDF()" class="w-full h-16 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-2xl shadow-2xl flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined">download</span> Baixar para Kindle ou Impressão
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Menu Inferior -->
+    <nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-4 pt-2 bg-background/95 backdrop-blur-xl border-t border-white/10">
+        <button onclick="switchTab('screen-editor')" class="nav-btn flex flex-col items-center text-on-surface-variant p-2">
+            <span class="material-symbols-outlined">auto_fix</span>
+            <span class="text-[10px] font-bold uppercase mt-1">Magic IA</span>
+        </button>
+        <button onclick="switchTab('screen-create')" class="nav-btn flex flex-col items-center text-on-surface-variant p-2">
+            <span class="material-symbols-outlined">add_circle</span>
+            <span class="text-[10px] font-bold uppercase mt-1">Create</span>
+        </button>
+        <button onclick="switchTab('screen-cover')" class="nav-btn flex flex-col items-center text-on-surface-variant p-2">
+            <span class="material-symbols-outlined">menu_book</span>
+            <span class="text-[10px] font-bold uppercase mt-1">Capa</span>
+        </button>
+        <button onclick="goToPreview()" class="nav-btn flex flex-col items-center text-on-surface-variant p-2">
+            <span class="font-['Literata'] text-lg font-bold tracking-tighter text-current leading-none" style="margin-bottom: 5px;">RF</span>
+            <span class="text-[10px] font-bold uppercase mt-1">Design</span>
+        </button>
+    </nav>
+
+    <script>
+        let capaUrl = "";
+
+        function switchTab(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden-screen'));
+            document.getElementById(screenId).classList.remove('hidden-screen');
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('nav-active'));
+            window.scrollTo(0,0);
+        }
+
+        function clearEditor() { if(confirm("Apagar livro?")) document.getElementById('main-textarea').innerText = ""; }
+
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (file.name.endsWith('.docx')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    mammoth.extractRawText({arrayBuffer: e.target.result}).then(res => {
+                        document.getElementById('main-textarea').innerText = res.value;
+                        switchTab('screen-editor');
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function uploadCapa(event) {
+            const file = event.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    capaUrl = e.target.result; // Data URL em base64
+                    document.getElementById('cover-preview-box').style.backgroundImage = `url(${capaUrl})`;
+                    document.getElementById('cover-preview-box').querySelector('div').style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function createPlan() {
+            const prompt = document.getElementById('book-idea').value;
+            if(!prompt) {
+                alert('Descreva a ideia central do livro.');
+                return;
+            }
+            
+            const btn = document.querySelector('button[onclick="createPlan()"]');
+            let interval;
+            if(btn) {
+                btn.disabled = true;
+                btn.classList.add('animate-pulse', 'opacity-80');
+                let dotCount = 0;
+                interval = setInterval(() => {
+                    dotCount = (dotCount + 1) % 4;
+                    btn.innerText = 'Gerando planejamento' + '.'.repeat(dotCount);
+                }, 500);
+            }
+            
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                
+                if(!response.ok) throw new Error('API Error');
+                
+                const data = await response.json();
+                document.getElementById('main-textarea').innerText = data.text;
+                
+                if(btn) {
+                    clearInterval(interval);
+                    btn.innerText = 'Livro gerado com sucesso!';
+                    btn.classList.remove('bg-secondary-container', 'text-black', 'animate-pulse', 'opacity-80');
+                    btn.classList.add('bg-green-500', 'text-white');
+                }
+                
+                setTimeout(() => {
+                    switchTab('screen-editor');
+                    if(btn) {
+                        btn.innerText = 'Gerar Planejamento';
+                        btn.classList.remove('bg-green-500', 'text-white');
+                        btn.classList.add('bg-secondary-container', 'text-black');
+                        btn.disabled = false;
+                    }
+                }, 1500);
+            } catch(error) {
+                console.error(error);
+                alert('Erro ao gerar o planejamento.');
+                if(btn) {
+                    clearInterval(interval);
+                    btn.innerText = 'Gerar Planejamento';
+                    btn.classList.remove('animate-pulse', 'opacity-80');
+                    btn.disabled = false;
+                }
+            }
+        }
+        
+        function applyMagicIA() {
+            let txt = document.getElementById('main-textarea').innerText;
+            txt = txt.replace(/^- /gm, "— "); // Organiza diálogos
+            txt = txt.replace(/\.\.\./g, "…");
+            document.getElementById('main-textarea').innerText = txt;
+            alert("✨ IA: Pontuação e diálogos organizados com sucesso!");
+        }
+
+        // PAGINAÇÃO INTELIGENTE (SEM CORTAR PALAVRAS)
+        function goToPreview() {
+            const container = document.getElementById('pages-container');
+            const fullText = document.getElementById('main-textarea').innerText;
+            const titulo = document.getElementById('in-title').value || "Título da Obra";
+            const autor = document.getElementById('in-author').value || "Seu Nome";
+
+            document.getElementById('prev-title').innerText = titulo;
+            container.innerHTML = "";
+
+            // 1. ADICIONAR CAPA
+            if(capaUrl) {
+                container.innerHTML += `
+                    <div class="book-page-pro" style="padding:0; justify-content:center;">
+                        <img src="${capaUrl}" class="w-full h-full object-cover">
+                    </div>
+                `;
+            }
+
+            // 2. ADICIONAR FOLHA DE ROSTO
+            container.innerHTML += `
+                <div class="book-page-pro text-center justify-center">
+                    <h1 class="font-bold mb-[4cqw]" style="font-size: 8cqw; line-height: 1.2;">${titulo}</h1>
+                    <p class="italic" style="font-size: 4.5cqw;">${autor}</p>
+                    <div class="mt-[15cqw] border-t border-slate-200 pt-[4cqw] uppercase tracking-widest" style="font-size: 2.5cqw;">RF Publishing</div>
+                </div>
+            `;
+
+            // 3. PAGINAÇÃO INTELIGENTE (PRESERVANDO PARÁGRAFOS)
+            const paragraphs = fullText.split(/\n+/);
+            let pages = [];
+            let currentText = "";
+            const maxCharsPerPage = 700; // Ajustado para caber perfeitamente na página
+
+            paragraphs.forEach((p) => {
+                if (!p.trim()) return;
+                
+                let words = p.split(/\s+/);
+                words.forEach((word) => {
+                    if ((currentText + " " + word).length > maxCharsPerPage) {
+                        pages.push(currentText.trim());
+                        currentText = word;
+                    } else {
+                        currentText += (currentText.endsWith("\n") || currentText === "" ? "" : " ") + word;
+                    }
+                });
+                currentText += "\n";
+            });
+            if (currentText.trim()) pages.push(currentText.trim());
+
+            // GERA AS PÁGINAS NO CONTAINER
+            pages.forEach((content, i) => {
+                const num = (i + 1).toString().padStart(2, '0');
+                container.innerHTML += `
+                    <div class="book-page-pro">
+                        <div class="flex justify-between uppercase tracking-widest text-slate-400 border-b pb-[2cqw] mb-[5cqw]" style="font-size: 2.2cqw;">
+                            <span>${titulo}</span><span>${autor}</span>
+                        </div>
+                        <div class="text-center text-slate-500 mb-[5cqw]" style="font-size: 2.6cqw;">${num}</div>
+                        <div class="text-content">
+                            ${i === 0 ? `<h3 class="font-bold mb-[6cqw]" style="font-size: 5cqw;">Capítulo Primeiro</h3>` : ''}
+                            ${content.split('\n').map(p => p.trim() ? `<p>${p.trim()}</p>` : '').join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            switchTab('screen-design');
+        }
+
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ format: 'a5', unit: 'mm' });
+            
+            const titulo = document.getElementById('in-title').value || "Meu Livro";
+            const autor = document.getElementById('in-author').value || "Autor";
+            const fullText = document.getElementById('main-textarea').innerText;
+            
+            let pageCount = 1;
+            
+            // 1. Capa
+            if (capaUrl) {
+                doc.addImage(capaUrl, 'JPEG', 0, 0, 148, 210);
+                doc.addPage();
+                pageCount++;
+            }
+            
+            // 2. Folha de Rosto
+            doc.setFont("times"); // Fonte clássica de livro
+            doc.setFontSize(24);
+            doc.text(titulo, 74, 100, { align: 'center' }); // Título centralizado
+            doc.setFontSize(14);
+            doc.text(autor, 74, 115, { align: 'center' });
+            
+            doc.setFontSize(10);
+            doc.text("RF Publishing", 74, 190, { align: 'center' });
+            
+            // 3. Paginação do Conteúdo
+            if (fullText.trim()) {
+                doc.addPage();
+                pageCount++;
+                let y = 30; // Margem superior
+                
+                doc.setFontSize(18);
+                doc.setFont("times", "bold");
+                doc.text("Capítulo Primeiro", 74, y, { align: 'center' });
+                y += 15;
+                
+                doc.setFontSize(12);
+                doc.setFont("times", "normal");
+                
+                const paragraphs = fullText.split(/\n+/);
+                
+                paragraphs.forEach(p => {
+                    if (!p.trim()) return;
+                    
+                    // Adiciona quebra de linha nas linhas para não transbordar (largura: 148 - margens)
+                    const splitText = doc.splitTextToSize("    " + p.trim(), 118); 
+                    
+                    for (let i = 0; i < splitText.length; i++) {
+                        if (y > 190) { // Margem inferior atingida
+                            // Adiciona numeração da página
+                            doc.setFontSize(10);
+                            doc.text(String(pageCount), 74, 202, { align: 'center' });
+                            
+                            doc.addPage();
+                            pageCount++;
+                            y = 30; // Reseta margem no topo da nova página
+                            doc.setFontSize(12);
+                        }
+                        doc.text(splitText[i], 15, y);
+                        y += 6; // Espaço entre linhas
+                    }
+                    y += 3; // Espaço do parágrafo
+                });
+                
+                // Numeração da última página
+                doc.setFontSize(10);
+                doc.text(String(pageCount), 74, 202, { align: 'center' });
+            }
+            
+            doc.save(`${titulo.replace(/ /g, '_')}.pdf`);
+        }
+        
+        switchTab('screen-create');
+    </script>
+</body>
+</html>
+
