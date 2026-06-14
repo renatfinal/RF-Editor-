@@ -38,6 +38,35 @@ const apiMiddleware = () => ({
         });
         return;
       }
+      if (req.url === '/api/check-grammar' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+          body += chunk.toString();
+        });
+        req.on('end', async () => {
+          try {
+            const { text } = JSON.parse(body);
+            const response = await ai.models.generateContent({
+              model: "gemini-3.5-flash",
+              contents: [{
+                role: 'user',
+                parts: [{ text: `Revise o texto abaixo e encontre erros gramaticais ou ortográficos. Retorne um JSON estrito no formato de um array de objetos, onde cada objeto tem:\n- "original": a palavra ou frase curta exata com erro presente no texto fornecido\n- "suggestion": a correção sugerida\n- "explanation": uma breve explicação do erro\n\nTexto:\n${text}` }]
+              }],
+              config: {
+                systemInstruction: "Você deve retornar APENAS um JSON válido contendo um array de objetos, nada mais. Sem blocos de código com trechos como ```json ou texto adicional.",
+                responseMimeType: "application/json"
+              }
+            });
+            res.setHeader('Content-Type', 'application/json');
+            res.end(response.text);
+          } catch (error) {
+            console.error(error);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: 'Failed to check grammar' }));
+          }
+        });
+        return;
+      }
       next();
     });
   }

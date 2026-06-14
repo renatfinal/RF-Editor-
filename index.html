@@ -121,6 +121,7 @@
             <div class="flex gap-2 mb-4 flex-wrap">
                 <button onclick="document.getElementById('file-input').click()" class="px-4 py-2 bg-primary/20 text-primary font-bold rounded-full flex items-center gap-2 border border-primary/40 hover:bg-primary/30 shadow-lg transition-all"><span class="material-symbols-outlined text-sm">upload_file</span> Importar Docx</button>
                 <button onclick="applyMagicIA()" class="px-4 py-2 bg-secondary-container text-black font-bold rounded-full flex items-center gap-2 ai-pulse border border-secondary-container shadow-lg hover:brightness-110 transition-all"><span class="material-symbols-outlined text-sm">auto_fix</span> Magic IA</button>
+                <button onclick="checkGrammar()" id="btn-grammar" class="px-4 py-2 bg-blue-500/20 text-blue-400 font-bold rounded-full flex items-center gap-2 border border-blue-500/40 hover:bg-blue-500/30 shadow-lg transition-all"><span class="material-symbols-outlined text-sm">spellcheck</span> Revisar Texto</button>
                 <button onclick="clearEditor()" class="px-4 py-2 bg-red-500/20 text-red-400 font-bold rounded-full flex items-center gap-2 border border-red-500/40 hover:bg-red-500/30 shadow-lg transition-all"><span class="material-symbols-outlined text-sm">delete</span> Limpar</button>
             </div>
             <input type="file" id="file-input" hidden onchange="handleImport(event)">
@@ -176,6 +177,17 @@
         </section>
 
     </main>
+
+    <!-- Grammar Checker Panel -->
+    <div id="grammar-panel" class="fixed right-0 top-16 bottom-16 w-80 max-w-full bg-surface/95 backdrop-blur-xl border-l border-white/10 p-6 transform translate-x-full transition-transform duration-300 z-40 overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="font-bold text-lg text-primary flex items-center gap-2"><span class="material-symbols-outlined">spellcheck</span> Revisão</h3>
+            <button onclick="closeGrammarPanel()" class="text-on-surface-variant hover:text-white"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div id="grammar-suggestions" class="space-y-4">
+            <!-- Suggestions will be injected here -->
+        </div>
+    </div>
 
     <!-- Menu Inferior -->
     <nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-4 pt-2 bg-background/95 backdrop-blur-xl border-t border-white/10">
@@ -301,6 +313,90 @@
             txt = txt.replace(/\.\.\./g, "…");
             document.getElementById('main-textarea').innerText = txt;
             alert("✨ IA: Pontuação e diálogos organizados com sucesso!");
+        }
+
+        async function checkGrammar() {
+            const txt = document.getElementById('main-textarea').innerText;
+            if(!txt.trim()) {
+                alert("O editor está vazio.");
+                return;
+            }
+
+            const btn = document.getElementById('btn-grammar');
+            const originalTextContent = btn.innerHTML;
+            btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin" style="animation: spin 1s linear infinite;">sync</span> Analisando...`;
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/check-grammar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: txt })
+                });
+
+                if(!response.ok) throw new Error("Erro na API.");
+
+                let suggestions = await response.json();
+                
+                // Show panel
+                document.getElementById('grammar-panel').classList.remove('translate-x-full');
+                
+                const grammarContainer = document.getElementById('grammar-suggestions');
+                grammarContainer.innerHTML = '';
+
+                if (!Array.isArray(suggestions) || suggestions.length === 0) {
+                    grammarContainer.innerHTML = '<p class="text-green-400 text-sm">Nenhum erro encontrado! Ótimo trabalho.</p>';
+                } else {
+                    suggestions.forEach((item, index) => {
+                        grammarContainer.innerHTML += `
+                            <div class="bg-black/20 p-4 rounded-xl border border-white/10" id="sugg-${index}">
+                                <p class="text-xs text-red-400 line-through mb-1">${escapeHtml(item.original)}</p>
+                                <p class="text-sm text-green-400 font-bold mb-2">${escapeHtml(item.suggestion)}</p>
+                                <p class="text-xs text-on-surface-variant mb-4">${escapeHtml(item.explanation)}</p>
+                                <button onclick="applySuggestion('${escapeHtml(item.original).replace(/'/g, "\\'")}', '${escapeHtml(item.suggestion).replace(/'/g, "\\'")}', ${index})" class="w-full bg-primary/20 text-primary py-2 rounded-lg text-xs font-bold hover:bg-primary/30 transition">Aplicar Correção</button>
+                            </div>
+                        `;
+                    });
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao revisar texto. Tente novamente.");
+            } finally {
+                btn.innerHTML = originalTextContent;
+                btn.disabled = false;
+            }
+        }
+
+        function escapeHtml(unsafe) {
+            return (unsafe || "")
+                 .toString()
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        function closeGrammarPanel() {
+            document.getElementById('grammar-panel').classList.add('translate-x-full');
+        }
+
+        function applySuggestion(original, suggestion, index) {
+            const editor = document.getElementById('main-textarea');
+            
+            // Highlight replaced text
+            let txt = editor.innerHTML;
+            editor.innerHTML = txt.replace(original, `<mark class="bg-primary/30 text-white rounded px-1">${suggestion}</mark>`);
+            
+            // Remove the suggestion card
+            const card = document.getElementById(`sugg-${index}`);
+            if (card) card.remove();
+
+            // Auto close pattern if empty?
+            if (document.getElementById('grammar-suggestions').children.length === 0) {
+                document.getElementById('grammar-suggestions').innerHTML = '<p class="text-green-400 text-sm">Todas as correções aplicadas!</p>';
+            }
         }
 
         // PAGINAÇÃO INTELIGENTE (SEM CORTAR PALAVRAS)
