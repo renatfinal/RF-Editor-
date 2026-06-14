@@ -91,7 +91,17 @@
                 <span class="font-['Literata'] text-2xl font-bold tracking-tighter text-primary/80" style="letter-spacing: -2px;">RF</span>
                 <h1 class="text-xl font-bold text-white">Editor</h1>
             </div>
-            <span class="material-symbols-outlined text-primary">account_circle</span>
+            
+            <div class="flex items-center gap-4">
+                <button onclick="switchTab('screen-library')" class="flex items-center hover:opacity-80 transition-opacity text-on-surface-variant hover:text-white" title="Biblioteca">
+                    <span class="material-symbols-outlined text-[28px]">library_books</span>
+                </button>
+                <button onclick="switchTab('screen-profile')" class="flex items-center hover:opacity-80 transition-opacity" title="Meu Perfil">
+                    <div id="header-profile-icon" class="w-10 h-10 rounded-full bg-surface border border-white/20 flex items-center justify-center overflow-hidden bg-cover bg-center">
+                        <span id="header-profile-placeholder" class="material-symbols-outlined text-primary text-[36px]">account_circle</span>
+                    </div>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -176,6 +186,72 @@
             </div>
         </section>
 
+        <!-- TELA PERFIL -->
+        <section id="screen-profile" class="screen hidden-screen">
+            <h2 class="text-2xl font-bold mb-6 text-primary text-center">Meu Perfil</h2>
+            
+            <div class="max-w-md mx-auto glass-card p-8 rounded-2xl">
+                <!-- Foto de Perfil -->
+                <div class="flex flex-col items-center mb-8">
+                    <label id="profile-preview-box" class="w-32 h-32 rounded-full bg-surface border-2 border-dashed border-white/20 flex items-center justify-center relative overflow-hidden bg-cover bg-center cursor-pointer hover:border-primary transition-colors">
+                        <div class="text-center bg-black/50 w-full h-full flex flex-col items-center justify-center backdrop-blur-sm pointer-events-none transition-opacity hover:opacity-0" id="profile-placeholder">
+                            <span class="material-symbols-outlined text-primary text-3xl mb-1">add_a_photo</span>
+                        </div>
+                        <input type="file" id="profile-file" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" accept="image/*" onchange="uploadProfilePhoto(event)">
+                    </label>
+                    <span class="text-xs text-on-surface-variant mt-2 text-center uppercase tracking-wider">Alterar Foto</span>
+                </div>
+
+                <div class="space-y-4">
+                    <input type="text" placeholder="Nome Completo" class="w-full bg-surface border-white/10 rounded-lg p-4 text-white outline-none focus:border-primary transition-colors">
+                    <input type="email" placeholder="E-mail" class="w-full bg-surface border-white/10 rounded-lg p-4 text-white outline-none focus:border-primary transition-colors">
+                    <input type="tel" placeholder="Telefone" class="w-full bg-surface border-white/10 rounded-lg p-4 text-white outline-none focus:border-primary transition-colors">
+                    <input type="password" placeholder="Senha" class="w-full bg-surface border-white/10 rounded-lg p-4 text-white outline-none focus:border-primary transition-colors">
+                    <input type="password" placeholder="Confirmar Senha" class="w-full bg-surface border-white/10 rounded-lg p-4 text-white outline-none focus:border-primary transition-colors">
+                    
+                    <div class="pt-6 space-y-3">
+                        <button onclick="saveProfile()" class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold hover:brightness-110 transition-all shadow-lg flex justify-center items-center gap-2">
+                            <span class="material-symbols-outlined">save</span> Salvar Alterações
+                        </button>
+                        <button onclick="logout()" class="w-full bg-red-500/20 text-red-400 py-3 rounded-lg font-bold hover:bg-red-500/30 transition-all border border-red-500/40 flex justify-center items-center gap-2">
+                            <span class="material-symbols-outlined">logout</span> Sair
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TELA BIBLIOTECA -->
+        <section id="screen-library" class="screen hidden-screen">
+            <h2 class="text-2xl font-bold mb-6 text-primary text-center">Minha Biblioteca</h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <!-- Livro Placeholder -->
+                <div class="glass-card rounded-xl p-4 flex flex-col items-center hover:border-primary/50 transition-colors cursor-pointer" onclick="switchTab('screen-editor')">
+                    <div class="w-full aspect-[2/3] bg-surface rounded-lg mb-4 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-4xl text-on-surface-variant">menu_book</span>
+                    </div>
+                    <h4 class="font-bold text-sm text-center line-clamp-1">Meu Primeiro Livro</h4>
+                    <p class="text-[10px] text-on-surface-variant mt-1">Editado há 2 dias</p>
+                </div>
+                
+                <!-- Livro Placeholder -->
+                <div class="glass-card rounded-xl p-4 flex flex-col items-center hover:border-primary/50 transition-colors cursor-pointer" onclick="switchTab('screen-editor')">
+                    <div class="w-full aspect-[2/3] bg-surface rounded-lg mb-4 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-4xl text-on-surface-variant">menu_book</span>
+                    </div>
+                    <h4 class="font-bold text-sm text-center line-clamp-1">O Fim da Jornada</h4>
+                    <p class="text-[10px] text-on-surface-variant mt-1">Editado há 5 dias</p>
+                </div>
+
+                <!-- Novo Livro -->
+                <div class="border-2 border-dashed border-white/20 rounded-xl p-4 flex flex-col items-center justify-center text-on-surface-variant hover:text-white hover:border-white/50 transition-colors cursor-pointer aspect-[2/3]" onclick="switchTab('screen-create')">
+                    <span class="material-symbols-outlined text-4xl mb-2">add</span>
+                    <span class="font-bold text-sm text-center">Novo Livro</span>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- Grammar Checker Panel -->
@@ -245,6 +321,35 @@
                     document.getElementById('cover-preview-box').querySelector('div').style.display = 'none';
                 }
                 reader.readAsDataURL(file);
+            }
+        }
+
+        function uploadProfilePhoto(event) {
+            const file = event.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const profileUrl = e.target.result;
+                    const previewBox = document.getElementById('profile-preview-box');
+                    previewBox.style.backgroundImage = `url(${profileUrl})`;
+                    document.getElementById('profile-placeholder').style.display = 'none';
+                    
+                    const headerIcon = document.getElementById('header-profile-icon');
+                    headerIcon.style.backgroundImage = `url(${profileUrl})`;
+                    document.getElementById('header-profile-placeholder').style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function saveProfile() {
+            alert('Alterações salvas com sucesso!');
+        }
+
+        function logout() {
+            if(confirm("Deseja realmente sair?")) {
+                alert('Você saiu do sistema.');
+                switchTab('screen-create');
             }
         }
 
