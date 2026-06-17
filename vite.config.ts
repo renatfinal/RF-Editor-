@@ -67,6 +67,70 @@ const apiMiddleware = () => ({
         });
         return;
       }
+      if (req.url === '/api/magic-ia' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+          body += chunk.toString();
+        });
+        req.on('end', async () => {
+          try {
+            const { text } = JSON.parse(body);
+            const response = await ai.models.generateContent({
+              model: "gemini-3.5-flash",
+              contents: [{
+                role: 'user',
+                parts: [{ text: `Melhore o texto abaixo, corrigindo pontuação, organizando diálogos com travessões, e ajustando a fluidez. Não modifique a essência da história. Retorne apenas o texto final.\n\nTexto original:\n${text}` }]
+              }]
+            });
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ text: response.text }));
+          } catch (error) {
+            console.error(error);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: 'Failed' }));
+          }
+        });
+        return;
+      }
+      if (req.url === '/api/generate-cover' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+          body += chunk.toString();
+        });
+        req.on('end', async () => {
+          try {
+            const { prompt } = JSON.parse(body);
+            const response = await ai.models.generateContent({
+              model: 'gemini-2.5-flash-image',
+              contents: {
+                parts: [
+                  {text: `A highly detailed book cover artwork painting, fantasy or thematic style, without any text. ${prompt}`},
+                ],
+              },
+              config: {
+                imageConfig: {
+                  aspectRatio: "3:4",
+                }
+              }
+            });
+            let base64Image = '';
+            for (const part of response.candidates[0].content.parts) {
+              if (part.inlineData) {
+                base64Image = part.inlineData.data;
+                break;
+              }
+            }
+            if (!base64Image) throw new Error("No image generated");
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ image: `data:image/png;base64,${base64Image}` }));
+          } catch (error) {
+            console.error(error);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: 'Failed' }));
+          }
+        });
+        return;
+      }
       next();
     });
   }
