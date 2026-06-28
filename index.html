@@ -6,6 +6,7 @@
     <title>RF Editor - Versão Final Profissional</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Hanken+Grotesk:wght@400;600&family=Literata:wght@400;500;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -183,9 +184,14 @@
 
             <div class="mt-20 p-8 glass-card rounded-3xl text-center border-primary/20">
                 <h3 class="text-xl font-bold mb-6">Sua obra está pronta para o mundo</h3>
-                <button onclick="downloadPDF()" class="w-full h-16 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-2xl shadow-2xl flex items-center justify-center gap-3 hover:scale-105 transition-transform">
-                    <span class="material-symbols-outlined">download</span> Baixar para Kindle ou Impressão
-                </button>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <button onclick="downloadPDF()" class="w-full h-16 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-2xl shadow-2xl flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                        <span class="material-symbols-outlined">picture_as_pdf</span> Baixar PDF (Impressão)
+                    </button>
+                    <button onclick="downloadEPUB()" class="w-full h-16 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold rounded-2xl shadow-2xl flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                        <span class="material-symbols-outlined">book</span> Baixar EPUB (Kindle/Leitores)
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -756,6 +762,167 @@
             }
             
             doc.save(`${titulo.replace(/ /g, '_')}.pdf`);
+        }
+
+        async function downloadEPUB() {
+            if (typeof JSZip === 'undefined') {
+                alert("Erro: JSZip não foi carregado.");
+                return;
+            }
+            
+            const btn = document.querySelector('button[onclick="downloadEPUB()"]');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = `<span class="material-symbols-outlined animate-spin" style="animation: spin 1s linear infinite;">sync</span> Gerando EPUB...`;
+            btn.disabled = true;
+
+            try {
+                const zip = new JSZip();
+                
+                const titulo = document.getElementById('in-title').value || "Meu Livro";
+                const autor = document.getElementById('in-author').value || "Autor";
+                const fullText = document.getElementById('main-textarea').innerText;
+
+                // mimetype MUST be first and NOT compressed
+                zip.file("mimetype", "application/epub+zip", {compression: "STORE"});
+
+                // META-INF
+                zip.file("META-INF/container.xml", `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+    <rootfiles>
+        <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+    </rootfiles>
+</container>`);
+
+                // Obter capa (se houver)
+                let hasCover = false;
+                if (capaUrl) {
+                    try {
+                        const resp = await fetch(capaUrl);
+                        if (resp.ok) {
+                            const blob = await resp.blob();
+                            zip.file("OEBPS/cover.jpg", blob);
+                            hasCover = true;
+                        }
+                    } catch (e) {
+                        console.error("Erro ao carregar a capa para o EPUB", e);
+                    }
+                }
+
+                // OEBPS/content.opf
+                let opf = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+        <dc:title>${escapeHtml(titulo)}</dc:title>
+        <dc:creator>${escapeHtml(autor)}</dc:creator>
+        <dc:language>pt-BR</dc:language>
+        <dc:identifier id="pub-id">urn:uuid:epub-rf-${Date.now()}</dc:identifier>
+        ${hasCover ? '<meta name="cover" content="cover-image"/>' : ''}
+    </metadata>
+    <manifest>
+        <item id="toc" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+        <item id="style" href="style.css" media-type="text/css"/>
+        <item id="content" href="content.xhtml" media-type="application/xhtml+xml"/>
+        ${hasCover ? '<item id="cover-image" href="cover.jpg" media-type="image/jpeg"/>' : ''}
+        ${hasCover ? '<item id="cover-page" href="cover.xhtml" media-type="application/xhtml+xml"/>' : ''}
+    </manifest>
+    <spine>
+        ${hasCover ? '<itemref idref="cover-page"/>' : ''}
+        <itemref idref="toc"/>
+        <itemref idref="content"/>
+    </spine>
+</package>`;
+                zip.file("OEBPS/content.opf", opf);
+
+                // OEBPS/style.css
+                zip.file("OEBPS/style.css", `
+                    body { font-family: serif; line-height: 1.6; margin: 5%; text-align: justify; }
+                    h1, h2, h3 { text-align: center; }
+                    .cover { text-align: center; page-break-after: always; height: 100vh; display: flex; align-items: center; justify-content: center; }
+                    .cover img { max-width: 100%; max-height: 100%; }
+                    p { margin-bottom: 1em; text-indent: 1.5em; }
+                `);
+
+                // OEBPS/cover.xhtml
+                if (hasCover) {
+                    zip.file("OEBPS/cover.xhtml", `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+    <title>Capa</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+</head>
+<body>
+    <div class="cover">
+        <img src="cover.jpg" alt="Cover"/>
+    </div>
+</body>
+</html>`);
+                }
+
+                // OEBPS/toc.xhtml
+                zip.file("OEBPS/toc.xhtml", `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+    <title>Índice</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+</head>
+<body>
+    <nav epub:type="toc" id="toc">
+        <h1>Índice</h1>
+        <ol>
+            ${hasCover ? '<li><a href="cover.xhtml">Capa</a></li>' : ''}
+            <li><a href="content.xhtml">Início</a></li>
+        </ol>
+    </nav>
+</body>
+</html>`);
+
+                // Conteúdo formatado
+                let htmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+    <title>${escapeHtml(titulo)}</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+</head>
+<body>
+    <div style="text-align: center; margin-bottom: 3em;">
+        <h1>${escapeHtml(titulo)}</h1>
+        <h3>${escapeHtml(autor)}</h3>
+        <br/><br/>
+        <p><i>RF Publishing</i></p>
+    </div>
+    <div style="page-break-before: always;"></div>
+    <h2>Capítulo Primeiro</h2>
+`;
+                
+                const paragraphs = fullText.split(/\n+/);
+                paragraphs.forEach(p => {
+                    if(p.trim()) {
+                        htmlContent += `    <p>${escapeHtml(p.trim())}</p>\n`;
+                    }
+                });
+                
+                htmlContent += `</body>\n</html>`;
+                
+                zip.file("OEBPS/content.xhtml", htmlContent);
+
+                // Gerar e Baixar
+                const content = await zip.generateAsync({type: "blob", mimeType: "application/epub+zip"});
+                const url = URL.createObjectURL(content);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${titulo.replace(/\s+/g, '_')}.epub`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                btn.innerHTML = `<span class="material-symbols-outlined text-green-400">check</span> Concluído`;
+                setTimeout(() => { btn.innerHTML = originalContent; }, 2000);
+            } catch(error) {
+                console.error("Erro ao gerar EPUB:", error);
+                btn.innerHTML = `<span class="material-symbols-outlined text-red-400">error</span> Erro`;
+                setTimeout(() => { btn.innerHTML = originalContent; }, 2000);
+            } finally {
+                btn.disabled = false;
+            }
         }
         
         switchTab('screen-create');

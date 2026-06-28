@@ -4,7 +4,26 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+function getAiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Chave de API do Gemini não configurada.');
+  }
+  return new GoogleGenAI({ apiKey });
+}
+
+async function generateContentWithRetry(ai, options) {
+  try {
+    return await ai.models.generateContent(options);
+  } catch (error) {
+    console.warn("First attempt failed, retrying with fallback model...", error.message);
+    const fallbackModel = options.model.includes('image') ? 'gemini-2.5-flash-image' : 'gemini-3.1-flash-lite';
+    return await ai.models.generateContent({
+      ...options,
+      model: fallbackModel
+    });
+  }
+}
 
 const apiMiddleware = () => ({
   name: 'api-middleware',
@@ -17,8 +36,9 @@ const apiMiddleware = () => ({
         });
         req.on('end', async () => {
           try {
+            const ai = getAiClient();
             const { prompt } = JSON.parse(body);
-            const response = await ai.models.generateContent({
+            const response = await generateContentWithRetry(ai, {
               model: "gemini-3.5-flash",
               contents: [{
                 role: 'user',
@@ -45,8 +65,9 @@ const apiMiddleware = () => ({
         });
         req.on('end', async () => {
           try {
+            const ai = getAiClient();
             const { text } = JSON.parse(body);
-            const response = await ai.models.generateContent({
+            const response = await generateContentWithRetry(ai, {
               model: "gemini-3.5-flash",
               contents: [{
                 role: 'user',
@@ -74,8 +95,9 @@ const apiMiddleware = () => ({
         });
         req.on('end', async () => {
           try {
+            const ai = getAiClient();
             const { text } = JSON.parse(body);
-            const response = await ai.models.generateContent({
+            const response = await generateContentWithRetry(ai, {
               model: "gemini-3.5-flash",
               contents: [{
                 role: 'user',
@@ -99,8 +121,9 @@ const apiMiddleware = () => ({
         });
         req.on('end', async () => {
           try {
+            const ai = getAiClient();
             const { prompt } = JSON.parse(body);
-            const response = await ai.models.generateContent({
+            const response = await generateContentWithRetry(ai, {
               model: 'gemini-2.5-flash-image',
               contents: {
                 parts: [
