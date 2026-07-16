@@ -44,7 +44,7 @@
             max-width: 450px;
             background: #fffcf5;
             color: #1a1a1a;
-            aspect-ratio: 1 / 1.41; /* Proporção A5 */
+            aspect-ratio: 6 / 9; /* Padrão Internacional 6x9 polegadas */
             padding: 11cqw 10cqw;
             box-shadow: 0 20px 50px rgba(0,0,0,0.6);
             font-family: 'Literata', serif;
@@ -692,7 +692,7 @@
 
         function downloadPDF() {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ format: 'a5', unit: 'mm' });
+            const doc = new jsPDF({ format: [152.4, 228.6], unit: 'mm' });
             
             const titulo = document.getElementById('in-title').value || "Meu Livro";
             const autor = document.getElementById('in-author').value || "Autor";
@@ -702,7 +702,7 @@
             
             // 1. Capa
             if (capaUrl) {
-                doc.addImage(capaUrl, 'JPEG', 0, 0, 148, 210);
+                doc.addImage(capaUrl, 'JPEG', 0, 0, 152.4, 228.6);
                 doc.addPage();
                 pageCount++;
             }
@@ -710,12 +710,12 @@
             // 2. Folha de Rosto
             doc.setFont("times"); // Fonte clássica de livro
             doc.setFontSize(24);
-            doc.text(titulo, 74, 100, { align: 'center' }); // Título centralizado
+            doc.text(titulo, 76.2, 100, { align: 'center' }); // Título centralizado
             doc.setFontSize(14);
-            doc.text(autor, 74, 115, { align: 'center' });
+            doc.text(autor, 76.2, 115, { align: 'center' });
             
             doc.setFontSize(10);
-            doc.text("RF Publishing", 74, 190, { align: 'center' });
+            doc.text("RF Publishing", 76.2, 210, { align: 'center' });
             
             // 3. Paginação do Conteúdo
             if (fullText.trim()) {
@@ -725,7 +725,7 @@
                 
                 doc.setFontSize(18);
                 doc.setFont("times", "bold");
-                doc.text("Capítulo Primeiro", 74, y, { align: 'center' });
+                doc.text("Capítulo Primeiro", 76.2, y, { align: 'center' });
                 y += 15;
                 
                 doc.setFontSize(12);
@@ -736,14 +736,14 @@
                 paragraphs.forEach(p => {
                     if (!p.trim()) return;
                     
-                    // Adiciona quebra de linha nas linhas para não transbordar (largura: 148 - margens)
-                    const splitText = doc.splitTextToSize("    " + p.trim(), 118); 
+                    // Adiciona quebra de linha nas linhas para não transbordar (largura: 152.4 - margens)
+                    const splitText = doc.splitTextToSize("    " + p.trim(), 122.4); 
                     
                     for (let i = 0; i < splitText.length; i++) {
-                        if (y > 190) { // Margem inferior atingida
+                        if (y > 210) { // Margem inferior atingida
                             // Adiciona numeração da página
                             doc.setFontSize(10);
-                            doc.text(String(pageCount), 74, 202, { align: 'center' });
+                            doc.text(String(pageCount), 76.2, 220, { align: 'center' });
                             
                             doc.addPage();
                             pageCount++;
@@ -758,7 +758,7 @@
                 
                 // Numeração da última página
                 doc.setFontSize(10);
-                doc.text(String(pageCount), 74, 202, { align: 'center' });
+                doc.text(String(pageCount), 76.2, 220, { align: 'center' });
             }
             
             doc.save(`${titulo.replace(/ /g, '_')}.pdf`);
